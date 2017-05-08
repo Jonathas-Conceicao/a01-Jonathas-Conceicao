@@ -1,0 +1,16 @@
+sudo: false
+language: cpp
+compiler:
+  - gcc
+os:
+  - linux
+
+addons:
+  apt:
+    sources:
+    packages:
+    - gcc
+
+
+script:
+  - make grade

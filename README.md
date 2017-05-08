@@ -32,22 +32,22 @@ A entrada do trabalho é uma lista com os pacotes e uma lista para a tabela de r
 A saída do trabalho é uma lista com o número de pacotes encaminhados para cada enlace em ordem crescente de número de enlace.
 
 Os enlaces são numerados de _1_ a _n_, onde _n_ é o total de enlaces de saída.  
-O código deve estar contido em um arquivo chamado *roteamento.c* para versão sequencial (que não precisa usar _threads_), *roteamento_t.c* para a versão paralela. Nenhum outro arquivo deve ser modificado. A única função que deverá ser declarada para o usuário final (quer dizer, o professor) está descrita em *roteamento.h*. __ATENÇÃO__: não altere nenhum arquivo original do repositório.
+O código deve estar contido em um arquivo chamado *roteamento.c* para versão sequencial (que não precisa usar _threads_), *roteamentot.c* para a versão paralela. Nenhum outro arquivo deve ser modificado. A única função que deverá ser declarada para o usuário final (quer dizer, o professor) está descrita em *roteamento.h*. __ATENÇÃO__: não altere nenhum arquivo original do repositório a não ser o _travis.yml_ para o teste da versão paralela.
 
 ## Testes
 
-Cada trabalho deverá fornecer pelo menos quatro exemplos de teste em um arquivo chamado *teste.c* usando a biblioteca Simplegrade.  Se os alunos quiserem, podem aumentar o número de testes seguindo este padrão de nomenclatura. Uma função *main()* deverá chamar as funções de teste. 
+Cada trabalho deverá fornecer exemplos de testes que não foram cobertos pelo professor no arquivo *teste.c* usando a biblioteca Simplegrade.  Se os alunos quiserem, podem aumentar o número de testes seguindo este padrão de nomenclatura. Uma função *main()* deverá chamar as funções de teste. 
 
 
 ## Produtos
 
-* Implementação (*roteamento.c*, *roteamento_t.c*)
+* Implementação (*roteamento.c*, *roteamentot.c*)
 * Casos de teste documentados (*teste.c*)
 
 ## Cronograma
 
-* Envio da versão sequencial: _16/05/2017_ (2 pontos)
-* Envio da versão final paralela: _30/05/2017_ (8 pontos)
+* Envio da versão sequencial: _23/05/2017_ (2 pontos)
+* Envio da versão final paralela: _06/06/2017_ (8 pontos)
 
 ## Problemas a considerar
 
