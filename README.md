@@ -7,9 +7,9 @@ Declaro que o presente trabalho contém código desenvolvido exclusivamente por 
 
 (Preencha com seus dados)
 
-- Nome completo: 
-- Username do Github: 
-- Email @inf: 
+- Nome completo: Jonathas Augusto de Oliveira Conceição 
+- Username do Github: jonathas-conceicao
+- Email @inf: jadoliveira@inf.ufpel.edu.br
 
 ## Descrição
 
