@@ -9,6 +9,14 @@ void printRota(entrada);
 int compEntrada(entrada, entrada);
 int assig(entrada *, int, uint32_t);
 
+typedef struct cList_ {
+  uint32_t *list;
+  int max_size;
+  int inpPos;
+  int outPos;
+  int qnt;
+} cList;
+
 uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
                       int num_pacotes, int num_enlaces) {
   // printf("Pacotes\n");
@@ -60,6 +68,15 @@ void sortEntrada(entrada* buffer, int size) {
   }while(flag);
 }
 
+int compEntrada(entrada a, entrada b) {
+  if (a.endereco > b.endereco) {
+    return 1;
+  } else if (a.endereco < b.endereco) {
+    return -1;
+  }
+  return 0;
+}
+
 void printRota(entrada in) {
     int *splited = split(in.endereco);
     printf("%i.%i.%i.%i\n",splited[0], splited[1], splited[2], splited[3]);
@@ -74,11 +91,32 @@ int *split(uint32_t addr) {
   return ret;
 }
 
-int compEntrada(entrada a, entrada b) {
-  if (a.endereco > b.endereco) {
-    return 1;
-  } else if (a.endereco < b.endereco) {
-    return -1;
+cList *init(int size) {
+  cList *ret;
+  ret = malloc(sizeof(cList));
+  (*ret).list = malloc(sizeof(uint32_t) * size);
+  (*ret).max_size = size;
+  qnt = 0;
+
+  return ret;
+}
+
+void push(cList cl, uint32_t data) {
+  cl.list[cl.inpPos] = data;
+  cl.inpPos = (inpPos + 1) % cl.max_size;
+  qnt++;
+  return;
+}
+
+uint32_t pop(cList cl) {
+  if (qnt) {
+    uint32_t p;
+    p = cl.list[cl.outPos];
+    if ((cl.outPos - 1) == -1) {
+      cl.outPos = cl.max_size;
+    } else {
+      cl.outPos--;
+    }
   }
-  return 0;
+  return -1;
 }
