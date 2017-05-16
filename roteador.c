@@ -35,10 +35,10 @@ int assig(entrada *buffer, int buffer_length, uint32_t pacote) {
   int rBuffer;
   int rPacote;
   for (size_t i = 0; i < buffer_length; i++) {
-    rPacote = pacote >> buffer[i].mascara;
-    rBuffer = buffer[i].endereco >> buffer[i].mascara;
+    rPacote = pacote >> (int) buffer[i].mascara;
+    rBuffer = buffer[i].endereco >> (int) buffer[i].mascara;
     if (rPacote == rBuffer) {
-      return buffer[i].enlace;
+      return (int) buffer[i].enlace;
     }
   }
   return 0;
