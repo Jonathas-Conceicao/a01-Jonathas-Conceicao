@@ -1,38 +1,49 @@
 #include "roteador.h"
 #include <stdlib.h>
-
 #include <stdio.h>
-
-int *split(uint32_t);
-void sortEntrada(entrada*, int);
-void printRota(entrada);
-int compEntrada(entrada, entrada);
-int assig(entrada *, int, uint32_t);
 
 typedef struct cList_ {
   uint32_t *list;
   int max_size;
-  int inpPos;
+  int insPos;
   int outPos;
   int qnt;
 } cList;
+
+cList *init(int);
+void push(cList *, uint32_t);
+uint32_t pop(cList *);
+
+int *split(uint32_t);
+void printRota(uint32_t);
+
+void sortEntrada(entrada*, int);
+int compEntrada(entrada, entrada);
+
+int assig(entrada *, int, uint32_t);
 
 uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
                       int num_pacotes, int num_enlaces) {
   // printf("Pacotes\n");
   // for (size_t i = 0; i < num_rotas; i++) {
-  //   printRota(rotas[i]);
+  //   printRota(rotas[i].endereco);
   // }
   sortEntrada(rotas, num_rotas);
   // printf("Ordenados\n");
   // for (size_t i = 0; i < num_rotas; i++) {
-  //   printRota(rotas[i]);
+  //   printRota(rotas[i].endereco);
   // }
+  cList *listaCircular;
+  listaCircular = init(num_pacotes);
+  for (size_t i = 0; i < num_pacotes; i++) {
+    push(listaCircular, pacotes[i]);
+  }
   uint32_t *ret;
   ret = malloc(sizeof(uint32_t) * num_enlaces);
   int x;
   for (size_t i = 0; i < num_pacotes; i++) {
-    x = assig(rotas, num_rotas, pacotes[i]);
+    // x = assig(rotas, num_rotas, pacotes[i]);
+    x = assig(rotas, num_rotas, pop(listaCircular));
     ret[x]++;
   }
   return ret;
@@ -40,14 +51,47 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
 
 int assig(entrada *buffer, int buffer_length, uint32_t pacote) {
   int x = 0;
-  int rBuffer;
-  int rPacote;
+  uint32_t rBuffer;
+  uint32_t rPacote;
   for (size_t i = 0; i < buffer_length; i++) {
-    rPacote = pacote >> 32 - (int) buffer[i].mascara;
     rBuffer = buffer[i].endereco >> 32 - (int) buffer[i].mascara;
+    rPacote = pacote >> 32 - (int) buffer[i].mascara;
     if (rPacote == rBuffer) {
       return (int) buffer[i].enlace;
     }
+  }
+  return 0;
+}
+
+cList *init(int size) {
+  cList *ret;
+  ret = malloc(sizeof(cList));
+  (*ret).list = malloc(sizeof(uint32_t) * size);
+  (*ret).insPos = 0;
+  (*ret).outPos = 0;
+  (*ret).max_size = size;
+  (*ret).qnt = 0;
+
+  return ret;
+}
+
+void push(cList *cl, uint32_t data) {
+  (*cl).list[(*cl).insPos] = data;
+  (*cl).insPos = ((*cl).insPos + 1) % (*cl).max_size;
+  if ((*cl).qnt + 1 >= (*cl).max_size) {
+    (*cl).qnt = (*cl).max_size;
+  } else {
+    (*cl).qnt++;
+  }
+  return;
+}
+
+uint32_t pop(cList *cl) {
+  if ((*cl).qnt) {
+    uint32_t p;
+    p = (*cl).list[(*cl).outPos];
+    (*cl).outPos = ((*cl).outPos + 1) % (*cl).max_size;
+    return p;
   }
   return 0;
 }
@@ -77,9 +121,9 @@ int compEntrada(entrada a, entrada b) {
   return 0;
 }
 
-void printRota(entrada in) {
-    int *splited = split(in.endereco);
-    printf("%i.%i.%i.%i\n",splited[0], splited[1], splited[2], splited[3]);
+void printRota(uint32_t in) {
+  int *splited = split(in);
+  printf("%i.%i.%i.%i\n",splited[0], splited[1], splited[2], splited[3]);
 }
 
 int *split(uint32_t addr) {
@@ -89,34 +133,4 @@ int *split(uint32_t addr) {
   ret[2] = (addr<<16)>>24;
   ret[3] = (addr<<24)>>24;
   return ret;
-}
-
-cList *init(int size) {
-  cList *ret;
-  ret = malloc(sizeof(cList));
-  (*ret).list = malloc(sizeof(uint32_t) * size);
-  (*ret).max_size = size;
-  qnt = 0;
-
-  return ret;
-}
-
-void push(cList cl, uint32_t data) {
-  cl.list[cl.inpPos] = data;
-  cl.inpPos = (inpPos + 1) % cl.max_size;
-  qnt++;
-  return;
-}
-
-uint32_t pop(cList cl) {
-  if (qnt) {
-    uint32_t p;
-    p = cl.list[cl.outPos];
-    if ((cl.outPos - 1) == -1) {
-      cl.outPos = cl.max_size;
-    } else {
-      cl.outPos--;
-    }
-  }
-  return -1;
 }
