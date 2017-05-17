@@ -23,6 +23,8 @@ int compEntrada(entrada, entrada);
 
 int assig(entrada *, int, uint32_t);
 
+void clean(cList **);
+
 uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
                       int num_pacotes, int num_enlaces) {
   cList *listaCircular;
@@ -30,17 +32,19 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
 
   sortEntrada(rotas, num_rotas);
   listaCircular = init(num_pacotes);
-  ret = malloc(sizeof(uint32_t) * num_enlaces);
-
+  ret = malloc(sizeof(uint32_t) * (num_enlaces + 1));
+  for (size_t i = 0; i < (num_enlaces+1); i++) {
+    ret[i] = 0;
+  }
   for (size_t i = 0; i < num_pacotes; i++) {
     push(listaCircular, pacotes[i]);
   }
   int x;
   for (size_t i = 0; i < num_pacotes; i++) {
-    // x = assig(rotas, num_rotas, pacotes[i]);
     x = assig(rotas, num_rotas, pop(listaCircular));
-    ret[x]++;
+    ret[x] += 1;
   }
+  clean(&listaCircular);
   return ret;
 }
 
@@ -68,6 +72,12 @@ cList *init(int size) {
   (*ret).qnt = 0;
 
   return ret;
+}
+
+void clean(cList **p) {
+  free((*(*p)).list);
+  free(*p);
+  return;
 }
 
 void push(cList *cl, uint32_t data) {
