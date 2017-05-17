@@ -1,6 +1,6 @@
 CC=gcc
 
-CFLAGS=-g -O0 -std=c11 -lpthread
+CFLAGS=-g -O0 -std=c99 -lpthread
 
 all: grade gradet
 
