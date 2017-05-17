@@ -1,6 +1,7 @@
-#include "roteador.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#include "roteador.h"
 
 typedef struct cList_ {
   uint32_t *list;
@@ -24,22 +25,16 @@ int assig(entrada *, int, uint32_t);
 
 uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
                       int num_pacotes, int num_enlaces) {
-  // printf("Pacotes\n");
-  // for (size_t i = 0; i < num_rotas; i++) {
-  //   printRota(rotas[i].endereco);
-  // }
-  sortEntrada(rotas, num_rotas);
-  // printf("Ordenados\n");
-  // for (size_t i = 0; i < num_rotas; i++) {
-  //   printRota(rotas[i].endereco);
-  // }
   cList *listaCircular;
+  uint32_t *ret;
+
+  sortEntrada(rotas, num_rotas);
   listaCircular = init(num_pacotes);
+  ret = malloc(sizeof(uint32_t) * num_enlaces);
+
   for (size_t i = 0; i < num_pacotes; i++) {
     push(listaCircular, pacotes[i]);
   }
-  uint32_t *ret;
-  ret = malloc(sizeof(uint32_t) * num_enlaces);
   int x;
   for (size_t i = 0; i < num_pacotes; i++) {
     // x = assig(rotas, num_rotas, pacotes[i]);
