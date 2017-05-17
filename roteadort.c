@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "roteador.h"
 
@@ -10,6 +11,12 @@ typedef struct cList_ {
   int outPos;
   int qnt;
 } cList;
+
+typedef struct pushArgs_ {
+  cList *listaCircular;
+  int num_pacotes;
+  uint32_t *pacotes;
+} pushArgs;
 
 cList *init(int);
 void clean(cList **);
@@ -24,27 +31,43 @@ int compEntrada(entrada, entrada);
 
 int assig(entrada *, int, uint32_t);
 
+
+void *pushAll(void *);
+
 uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
                       int num_pacotes, int num_enlaces) {
+  pthread_t threadIn, threadOut1, threadOut2, threadOut3, threadOut4;
+  int idTIn, idTOut1, idTOut2, idTOut3, idTOut4;
   cList *listaCircular;
   uint32_t *ret;
 
   sortEntrada(rotas, num_rotas);
   listaCircular = init(num_pacotes);
   ret = malloc(sizeof(uint32_t) * (num_enlaces + 1));
-  for (size_t i = 0; i < (num_enlaces+1); i++) {
-    ret[i] = 0;
-  }
-  for (size_t i = 0; i < num_pacotes; i++) {
-    push(listaCircular, pacotes[i]);
-  }
+
+  pushArgs pArgs;
+  pArgs.listaCircular = listaCircular;
+  pArgs.num_pacotes = num_pacotes;
+  pArgs.pacotes = pacotes;
+  idTIn = pthread_create(&threadIn, NULL, pushAll, &pArgs);
+
   int x;
   for (size_t i = 0; i < num_pacotes; i++) {
-    x = assig(rotas, num_rotas, pop(listaCircular));
-    ret[x] += 1;
+    // x = assig(rotas, num_rotas, pacotes[i]);
+    // x = assig(rotas, num_rotas, pop(listaCircular));
+    ret[x]++;
   }
   clean(&listaCircular);
   return ret;
+}
+
+void *pushAll(void *argV) {
+  pushArgs *arg = (pushArgs *) argV;
+  for (size_t i = 0; i < (*arg).num_pacotes; i++) {
+    printRota((*arg).pacotes[i]);
+    push((*arg).listaCircular, (*arg).pacotes[i]);
+  }
+  return (void *) 0;
 }
 
 int assig(entrada *buffer, int buffer_length, uint32_t pacote) {
