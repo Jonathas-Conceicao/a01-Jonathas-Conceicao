@@ -14,11 +14,14 @@ typedef struct cList_ {
 
 typedef struct thrdArgs_ {
   cList *listaCircular;
+  pthread_mutex_t fifo_lock;
   entrada *rotas;
   int num_rotas;
   uint32_t *pacotes;
-  int num_pacotes;
   uint32_t *ret;
+  int num_pacotes;
+  pthread_mutex_t ret_lock;
+  int inserting;
 } thrdArgs;
 
 cList *init(int);
@@ -42,6 +45,8 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
                       int num_pacotes, int num_enlaces) {
   pthread_t threadIn, threadOut1, threadOut2, threadOut3, threadOut4;
   int idTIn, idTOut1, idTOut2, idTOut3, idTOut4;
+  // pthread_mutex_t fifo_lock;
+  // pthread_mutex_t ret_lock;
   cList *listaCircular;
   uint32_t *ret;
 
@@ -59,17 +64,21 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
   pArgs.pacotes = pacotes;
   pArgs.num_pacotes = num_pacotes;
   pArgs.ret = ret;
+  pArgs.inserting = 1;
+  pthread_mutex_init(&pArgs.fifo_lock, NULL);
+  pthread_mutex_init(&pArgs.ret_lock, NULL);
   idTIn = pthread_create( &threadIn, NULL, thread_push, (void *) &pArgs);
-  pthread_join( threadIn, NULL);
   idTOut1 = pthread_create( &threadOut1, NULL, thread_pop, (void *) &pArgs);
-  // idTOut2 = pthread_create( &threadOut2, NULL, thread_pop, (void *) &pArgs);
-  // idTOut3 = pthread_create( &threadOut3, NULL, thread_pop, (void *) &pArgs);
-  // idTOut4 = pthread_create( &threadOut4, NULL, thread_pop, (void *) &pArgs);
-  // pthread_join( threadOut4, NULL);
-  // pthread_join( threadOut3, NULL);
-  // pthread_join( threadOut2, NULL);
+  idTOut2 = pthread_create( &threadOut2, NULL, thread_pop, (void *) &pArgs);
+  idTOut3 = pthread_create( &threadOut3, NULL, thread_pop, (void *) &pArgs);
+  idTOut4 = pthread_create( &threadOut4, NULL, thread_pop, (void *) &pArgs);
+  pthread_join( threadOut4, NULL);
+  pthread_join( threadOut3, NULL);
+  pthread_join( threadOut2, NULL);
   pthread_join( threadOut1, NULL);
-  // pthread_join( threadIn, NULL);
+  pthread_join( threadIn, NULL);
+  pthread_mutex_destroy(&pArgs.fifo_lock);
+  pthread_mutex_destroy(&pArgs.ret_lock);
 
   clean(&listaCircular);
   return ret;
@@ -78,19 +87,29 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
 void *thread_push(void *ptr) {
   thrdArgs *arg = (thrdArgs *) ptr;
   for (size_t i = 0; i < (*arg).num_pacotes; i++) {
-    // printRota((*arg).pacotes[i]);
+    pthread_mutex_lock(&(*arg).fifo_lock);
     push((*arg).listaCircular, (*arg).pacotes[i]);
+    pthread_mutex_unlock(&(*arg).fifo_lock);
   }
+  (*arg).inserting = 0;
   return (void *) 0;
 }
 
 void *thread_pop(void *ptr) {
   thrdArgs *arg = (thrdArgs *) ptr;
-  int x;
-  for (size_t i = 0; i < (*arg).num_pacotes; i++) {
-    x = assig((*arg).rotas, (*arg).num_rotas, pop((*arg).listaCircular));
-    (*arg).ret[x]++;
+  uint32_t pacote;
+  // for (size_t i = 0; i < (*arg).num_pacotes; i++) {
+  while ( ((*(*arg).listaCircular).qnt != 0) || (*arg).inserting) {
+    pthread_mutex_lock(&(*arg).fifo_lock);
+    pacote = pop((*arg).listaCircular);
+    pthread_mutex_unlock(&(*arg).fifo_lock);
+    if (pacote) { //Ignores empty returns from pop
+      pthread_mutex_lock(&(*arg).ret_lock);
+      (*arg).ret[assig((*arg).rotas, (*arg).num_rotas, pacote)]++;
+      pthread_mutex_unlock(&(*arg).ret_lock);
+    }
   }
+  // }
   return (void *) 0;
 }
 
@@ -142,9 +161,10 @@ uint32_t pop(cList *cl) {
     uint32_t p;
     p = (*cl).list[(*cl).outPos];
     (*cl).outPos = ((*cl).outPos + 1) % (*cl).max_size;
+    (*cl).qnt--;
     return p;
   }
-  return 0;
+  return 0; //Usado para representar fila vazia.
 }
 
 void sortEntrada(entrada* buffer, int size) {
