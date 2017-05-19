@@ -12,11 +12,14 @@ typedef struct cList_ {
   int qnt;
 } cList;
 
-typedef struct pushArgs_ {
+typedef struct thrdArgs_ {
   cList *listaCircular;
-  int num_pacotes;
+  entrada *rotas;
+  int num_rotas;
   uint32_t *pacotes;
-} pushArgs;
+  int num_pacotes;
+  uint32_t *ret;
+} thrdArgs;
 
 cList *init(int);
 void clean(cList **);
@@ -32,7 +35,8 @@ int compEntrada(entrada, entrada);
 int assig(entrada *, int, uint32_t);
 
 
-void *pushAll(void *);
+void *thread_push(void *);
+void *thread_pop(void *);
 
 uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
                       int num_pacotes, int num_enlaces) {
@@ -44,28 +48,48 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
   sortEntrada(rotas, num_rotas);
   listaCircular = init(num_pacotes);
   ret = malloc(sizeof(uint32_t) * (num_enlaces + 1));
-
-  pushArgs pArgs;
-  pArgs.listaCircular = listaCircular;
-  pArgs.num_pacotes = num_pacotes;
-  pArgs.pacotes = pacotes;
-  idTIn = pthread_create(&threadIn, NULL, pushAll, &pArgs);
-
-  int x;
-  for (size_t i = 0; i < num_pacotes; i++) {
-    // x = assig(rotas, num_rotas, pacotes[i]);
-    // x = assig(rotas, num_rotas, pop(listaCircular));
-    ret[x]++;
+  for (size_t i = 0; i < (num_enlaces+1); i++) {
+    ret[i] = 0;
   }
+
+  thrdArgs pArgs;
+  pArgs.listaCircular = listaCircular;
+  pArgs.rotas = rotas;
+  pArgs.num_rotas = num_rotas;
+  pArgs.pacotes = pacotes;
+  pArgs.num_pacotes = num_pacotes;
+  pArgs.ret = ret;
+  idTIn = pthread_create( &threadIn, NULL, thread_push, (void *) &pArgs);
+  pthread_join( threadIn, NULL);
+  idTOut1 = pthread_create( &threadOut1, NULL, thread_pop, (void *) &pArgs);
+  // idTOut2 = pthread_create( &threadOut2, NULL, thread_pop, (void *) &pArgs);
+  // idTOut3 = pthread_create( &threadOut3, NULL, thread_pop, (void *) &pArgs);
+  // idTOut4 = pthread_create( &threadOut4, NULL, thread_pop, (void *) &pArgs);
+  // pthread_join( threadOut4, NULL);
+  // pthread_join( threadOut3, NULL);
+  // pthread_join( threadOut2, NULL);
+  pthread_join( threadOut1, NULL);
+  // pthread_join( threadIn, NULL);
+
   clean(&listaCircular);
   return ret;
 }
 
-void *pushAll(void *argV) {
-  pushArgs *arg = (pushArgs *) argV;
+void *thread_push(void *ptr) {
+  thrdArgs *arg = (thrdArgs *) ptr;
   for (size_t i = 0; i < (*arg).num_pacotes; i++) {
-    printRota((*arg).pacotes[i]);
+    // printRota((*arg).pacotes[i]);
     push((*arg).listaCircular, (*arg).pacotes[i]);
+  }
+  return (void *) 0;
+}
+
+void *thread_pop(void *ptr) {
+  thrdArgs *arg = (thrdArgs *) ptr;
+  int x;
+  for (size_t i = 0; i < (*arg).num_pacotes; i++) {
+    x = assig((*arg).rotas, (*arg).num_rotas, pop((*arg).listaCircular));
+    (*arg).ret[x]++;
   }
   return (void *) 0;
 }
