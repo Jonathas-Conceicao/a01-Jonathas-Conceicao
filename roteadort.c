@@ -4,6 +4,9 @@
 
 #include "roteador.h"
 
+#define NUM_THREAD_OUT 4
+#define NUM_THREAD_IN  1 // Código não permite várias threads de input.
+
 typedef struct cList_ {
   uint32_t *list;
   int max_size;
@@ -22,6 +25,7 @@ typedef struct thrdArgs_ {
   int num_pacotes;
   pthread_mutex_t ret_lock;
   int inserting;
+  pthread_mutex_t inserting_lock;
 } thrdArgs;
 
 cList *init(int);
@@ -36,17 +40,14 @@ void sortEntrada(entrada*, int);
 int compEntrada(entrada, entrada);
 
 int assig(entrada *, int, uint32_t);
-
+int testInserting(thrdArgs *);
 
 void *thread_push(void *);
 void *thread_pop(void *);
 
 uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
                       int num_pacotes, int num_enlaces) {
-  pthread_t threadIn, threadOut1, threadOut2, threadOut3, threadOut4;
-  int idTIn, idTOut1, idTOut2, idTOut3, idTOut4;
-  // pthread_mutex_t fifo_lock;
-  // pthread_mutex_t ret_lock;
+  pthread_t threadIn[NUM_THREAD_IN], threadOut[NUM_THREAD_OUT];
   cList *listaCircular;
   uint32_t *ret;
 
@@ -65,18 +66,19 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
   pArgs.num_pacotes = num_pacotes;
   pArgs.ret = ret;
   pArgs.inserting = 1;
-  pthread_mutex_init(&pArgs.fifo_lock, NULL);
   pthread_mutex_init(&pArgs.ret_lock, NULL);
-  idTIn = pthread_create( &threadIn, NULL, thread_push, (void *) &pArgs);
-  idTOut1 = pthread_create( &threadOut1, NULL, thread_pop, (void *) &pArgs);
-  idTOut2 = pthread_create( &threadOut2, NULL, thread_pop, (void *) &pArgs);
-  idTOut3 = pthread_create( &threadOut3, NULL, thread_pop, (void *) &pArgs);
-  idTOut4 = pthread_create( &threadOut4, NULL, thread_pop, (void *) &pArgs);
-  pthread_join( threadOut4, NULL);
-  pthread_join( threadOut3, NULL);
-  pthread_join( threadOut2, NULL);
-  pthread_join( threadOut1, NULL);
-  pthread_join( threadIn, NULL);
+  pthread_mutex_init(&pArgs.fifo_lock, NULL);
+  pthread_mutex_init(&pArgs.inserting_lock, NULL);
+  for (size_t i = 0; i < NUM_THREAD_IN; i++)
+    pthread_create( &threadIn[i], NULL, thread_push, (void *) &pArgs);
+  for (size_t i = 0; i < NUM_THREAD_OUT; i++)
+    pthread_create( &threadOut[i], NULL, thread_pop, (void *) &pArgs);
+
+  for (size_t i = 0; i < NUM_THREAD_OUT; i++)
+    pthread_join( threadOut[i], NULL);
+  for (size_t i = 0; i < NUM_THREAD_IN; i++)
+    pthread_join( threadIn[i], NULL);
+  pthread_mutex_destroy(&pArgs.inserting_lock);
   pthread_mutex_destroy(&pArgs.fifo_lock);
   pthread_mutex_destroy(&pArgs.ret_lock);
 
@@ -91,15 +93,16 @@ void *thread_push(void *ptr) {
     push((*arg).listaCircular, (*arg).pacotes[i]);
     pthread_mutex_unlock(&(*arg).fifo_lock);
   }
+  pthread_mutex_lock(&(*arg).inserting_lock);
   (*arg).inserting = 0;
+  pthread_mutex_unlock(&(*arg).inserting_lock);
   return (void *) 0;
 }
 
 void *thread_pop(void *ptr) {
   thrdArgs *arg = (thrdArgs *) ptr;
   uint32_t pacote;
-  // for (size_t i = 0; i < (*arg).num_pacotes; i++) {
-  while ( ((*(*arg).listaCircular).qnt != 0) || (*arg).inserting) {
+  while ( ((*(*arg).listaCircular).qnt != 0) || testInserting(arg)) {
     pthread_mutex_lock(&(*arg).fifo_lock);
     pacote = pop((*arg).listaCircular);
     pthread_mutex_unlock(&(*arg).fifo_lock);
@@ -109,21 +112,28 @@ void *thread_pop(void *ptr) {
       pthread_mutex_unlock(&(*arg).ret_lock);
     }
   }
-  // }
   return (void *) 0;
 }
 
+int testInserting(thrdArgs *arg) { // Small subrotine so the while looks cleaner
+  int ret;
+  pthread_mutex_lock(&(*arg).inserting_lock);
+  ret = (*arg).inserting;
+  pthread_mutex_unlock(&(*arg).inserting_lock);
+  return ret;
+}
 int assig(entrada *buffer, int buffer_length, uint32_t pacote) {
   int x = 0;
   uint32_t rBuffer;
   uint32_t rPacote;
-  for (size_t i = 0; i < buffer_length; i++) {
+  size_t i = 0;
+  do {
     rBuffer = buffer[i].endereco >> 32 - (int) buffer[i].mascara;
     rPacote = pacote >> 32 - (int) buffer[i].mascara;
-    if (rPacote == rBuffer) {
+    if (rPacote == rBuffer)
       return (int) buffer[i].enlace;
-    }
-  }
+    i++;
+  } while(i < buffer_length || rPacote < rBuffer);
   return 0;
 }
 
