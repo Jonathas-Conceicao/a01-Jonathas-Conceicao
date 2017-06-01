@@ -90,19 +90,19 @@ void *thread_push(void *ptr) {
   thrdArgs *arg = (thrdArgs *) ptr;
   while (1) {
     pthread_mutex_lock(&(*arg).fifo_lock);
-    if (testInserting(arg) < 1) {
+    pthread_mutex_lock(&(*arg).inserting_lock);
+    if ((*arg).num_pacotes < 1) {
+      pthread_mutex_unlock(&(*arg).inserting_lock);
       pthread_mutex_unlock(&(*arg).fifo_lock);
       break;
     }
     if (push((*arg).listaCircular, (*arg).pacotes[(*arg).iterate]) != 1) {
-      pthread_mutex_unlock(&(*arg).fifo_lock);
       (*arg).iterate++;
-      pthread_mutex_lock(&(*arg).inserting_lock);
+      // pthread_mutex_lock(&(*arg).inserting_lock);
       (*arg).num_pacotes--;
-      pthread_mutex_unlock(&(*arg).inserting_lock);
-    } else { // Assim eu posso liberar o lock da fila mais cedo.
-      pthread_mutex_unlock(&(*arg).fifo_lock);
     }
+    pthread_mutex_unlock(&(*arg).inserting_lock);
+    pthread_mutex_unlock(&(*arg).fifo_lock);
   }
   return (void *) 0;
 }
