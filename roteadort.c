@@ -30,7 +30,7 @@ typedef struct thrdArgs_ {
 
 cList *init(int);
 void clean(cList **);
-void push(cList *, uint32_t);
+int push(cList *, uint32_t);
 uint32_t pop(cList *);
 
 int *split(uint32_t);
@@ -52,7 +52,7 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
   uint32_t *ret;
 
   sortEntrada(rotas, num_rotas);
-  listaCircular = init(num_pacotes);
+  listaCircular = init(5);
   ret = malloc(sizeof(uint32_t) * (num_enlaces + 1));
   for (size_t i = 0; i < (num_enlaces+1); i++) {
     ret[i] = 0;
@@ -90,7 +90,8 @@ void *thread_push(void *ptr) {
   thrdArgs *arg = (thrdArgs *) ptr;
   for (size_t i = 0; i < (*arg).num_pacotes; i++) {
     pthread_mutex_lock(&(*arg).fifo_lock);
-    push((*arg).listaCircular, (*arg).pacotes[i]);
+    if (push((*arg).listaCircular, (*arg).pacotes[i]))
+      i--; //List was full, ignore this increment
     pthread_mutex_unlock(&(*arg).fifo_lock);
   }
   pthread_mutex_lock(&(*arg).inserting_lock);
@@ -155,7 +156,9 @@ void clean(cList **p) {
   return;
 }
 
-void push(cList *cl, uint32_t data) {
+int push(cList *cl, uint32_t data) {
+  if ((*cl).qnt == (*cl).max_size)
+    return 1;
   (*cl).list[(*cl).insPos] = data;
   (*cl).insPos = ((*cl).insPos + 1) % (*cl).max_size;
   if ((*cl).qnt + 1 >= (*cl).max_size) {
@@ -163,7 +166,7 @@ void push(cList *cl, uint32_t data) {
   } else {
     (*cl).qnt++;
   }
-  return;
+  return 0;
 }
 
 uint32_t pop(cList *cl) {
