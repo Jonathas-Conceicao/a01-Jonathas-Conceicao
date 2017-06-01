@@ -5,7 +5,7 @@
 #include "roteador.h"
 
 #define NUM_THREAD_OUT 4
-#define NUM_THREAD_IN  1 // Código não permite várias threads de input.
+#define NUM_THREAD_IN  1 // Posso ter mais de uma thread inserindo (just for fun).
 
 typedef struct cList_ {
   uint32_t *list;
@@ -22,9 +22,9 @@ typedef struct thrdArgs_ {
   int num_rotas;
   uint32_t *pacotes;
   uint32_t *ret;
-  int num_pacotes;
+  unsigned int num_pacotes;
   pthread_mutex_t ret_lock;
-  int inserting;
+  int iterate;
   pthread_mutex_t inserting_lock;
 } thrdArgs;
 
@@ -65,7 +65,7 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
   pArgs.pacotes = pacotes;
   pArgs.num_pacotes = num_pacotes;
   pArgs.ret = ret;
-  pArgs.inserting = 1;
+  pArgs.iterate = 0;
   pthread_mutex_init(&pArgs.ret_lock, NULL);
   pthread_mutex_init(&pArgs.fifo_lock, NULL);
   pthread_mutex_init(&pArgs.inserting_lock, NULL);
@@ -88,15 +88,22 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
 
 void *thread_push(void *ptr) {
   thrdArgs *arg = (thrdArgs *) ptr;
-  for (size_t i = 0; i < (*arg).num_pacotes; i++) {
+  while (1) {
     pthread_mutex_lock(&(*arg).fifo_lock);
-    if (push((*arg).listaCircular, (*arg).pacotes[i]))
-      i--; //List was full, ignore this increment
-    pthread_mutex_unlock(&(*arg).fifo_lock);
+    if (testInserting(arg) < 1) {
+      pthread_mutex_unlock(&(*arg).fifo_lock);
+      break;
+    }
+    if (push((*arg).listaCircular, (*arg).pacotes[(*arg).iterate]) != 1) {
+      pthread_mutex_unlock(&(*arg).fifo_lock);
+      (*arg).iterate++;
+      pthread_mutex_lock(&(*arg).inserting_lock);
+      (*arg).num_pacotes--;
+      pthread_mutex_unlock(&(*arg).inserting_lock);
+    } else { // Assim eu posso liberar o lock da fila mais cedo.
+      pthread_mutex_unlock(&(*arg).fifo_lock);
+    }
   }
-  pthread_mutex_lock(&(*arg).inserting_lock);
-  (*arg).inserting = 0;
-  pthread_mutex_unlock(&(*arg).inserting_lock);
   return (void *) 0;
 }
 
@@ -107,7 +114,7 @@ void *thread_pop(void *ptr) {
     pthread_mutex_lock(&(*arg).fifo_lock);
     pacote = pop((*arg).listaCircular);
     pthread_mutex_unlock(&(*arg).fifo_lock);
-    if (pacote) { //Ignores empty returns from pop
+    if (pacote) { // Ignore pacotes vazios (0) retornados do pop.
       pthread_mutex_lock(&(*arg).ret_lock);
       (*arg).ret[assig((*arg).rotas, (*arg).num_rotas, pacote)]++;
       pthread_mutex_unlock(&(*arg).ret_lock);
@@ -116,13 +123,14 @@ void *thread_pop(void *ptr) {
   return (void *) 0;
 }
 
-int testInserting(thrdArgs *arg) { // Small subrotine so the while looks cleaner
+int testInserting(thrdArgs *arg) {
   int ret;
   pthread_mutex_lock(&(*arg).inserting_lock);
-  ret = (*arg).inserting;
+  ret = (*arg).num_pacotes;
   pthread_mutex_unlock(&(*arg).inserting_lock);
   return ret;
 }
+
 int assig(entrada *buffer, int buffer_length, uint32_t pacote) {
   int x = 0;
   uint32_t rBuffer;
@@ -177,7 +185,7 @@ uint32_t pop(cList *cl) {
     (*cl).qnt--;
     return p;
   }
-  return 0; //Usado para representar fila vazia.
+  return 0; // Usado para representar fila vazia.
 }
 
 void sortEntrada(entrada* buffer, int size) {
@@ -207,7 +215,8 @@ int compEntrada(entrada a, entrada b) {
 
 void printRota(uint32_t in) {
   int *splited = split(in);
-  printf("%i.%i.%i.%i\n",splited[0], splited[1], splited[2], splited[3]);
+  printf("%i.%i.%i.%i",splited[0], splited[1], splited[2], splited[3]);
+  free(splited);
 }
 
 int *split(uint32_t addr) {
