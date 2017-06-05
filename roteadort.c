@@ -23,6 +23,7 @@ typedef struct thrdArgs_ {
   uint32_t *pacotes;
   uint32_t *ret;
   unsigned int num_pacotes;
+  unsigned int num_enlaces;
   pthread_mutex_t ret_lock;
   int iterate;
   pthread_mutex_t inserting_lock;
@@ -31,7 +32,7 @@ typedef struct thrdArgs_ {
 cList *init(int);
 void clean(cList **);
 int push(cList *, uint32_t);
-uint32_t pop(cList *);
+uint32_t pop(cList *, int *);
 
 int *split(uint32_t);
 void printRota(uint32_t);
@@ -64,6 +65,7 @@ uint32_t * roteamento(entrada * rotas, int num_rotas, uint32_t * pacotes,
   pArgs.num_rotas = num_rotas;
   pArgs.pacotes = pacotes;
   pArgs.num_pacotes = num_pacotes;
+  pArgs.num_enlaces = num_enlaces;
   pArgs.ret = ret;
   pArgs.iterate = 0;
   pthread_mutex_init(&pArgs.ret_lock, NULL);
@@ -109,17 +111,24 @@ void *thread_push(void *ptr) {
 
 void *thread_pop(void *ptr) {
   thrdArgs *arg = (thrdArgs *) ptr;
+  int flag;
   uint32_t pacote;
   while ( ((*(*arg).listaCircular).qnt != 0) || testInserting(arg)) {
     pthread_mutex_lock(&(*arg).fifo_lock);
-    pacote = pop((*arg).listaCircular);
+    pacote = pop((*arg).listaCircular, &flag);
     pthread_mutex_unlock(&(*arg).fifo_lock);
-    if (pacote) { // Ignore pacotes vazios (0) retornados do pop.
+    if (flag) { // Ignora pacotes vazios retornados do pop.
       pthread_mutex_lock(&(*arg).ret_lock);
-      (*arg).ret[assig((*arg).rotas, (*arg).num_rotas, pacote)]++;
+      if (pacote == 0) {
+        for (size_t i = 0; i < (*arg).num_enlaces; i++) {
+          (*arg).ret[i]++;
+        }
+      } else {
+        (*arg).ret[assig((*arg).rotas, (*arg).num_rotas, pacote)]++;
+      }
       pthread_mutex_unlock(&(*arg).ret_lock);
     }
-  }
+  };
   return (void *) 0;
 }
 
@@ -177,15 +186,17 @@ int push(cList *cl, uint32_t data) {
   return 0;
 }
 
-uint32_t pop(cList *cl) {
+uint32_t pop(cList *cl, int *flag) {
   if ((*cl).qnt) {
     uint32_t p;
     p = (*cl).list[(*cl).outPos];
     (*cl).outPos = ((*cl).outPos + 1) % (*cl).max_size;
     (*cl).qnt--;
+    *flag = 1;
     return p;
   }
-  return 0; // Usado para representar fila vazia.
+  *flag = 0;
+  return 0; // Não será utilizado.
 }
 
 void sortEntrada(entrada* buffer, int size) {
