@@ -120,7 +120,8 @@ void *thread_pop(void *ptr) {
     if (flag) { // Ignora pacotes vazios retornados do pop.
       pthread_mutex_lock(&(*arg).ret_lock);
       if (pacote == 0) {
-        for (size_t i = 0; i < (*arg).num_enlaces; i++) {
+        for (size_t i = 1; i < (*arg).num_enlaces + 1; i++) {
+          // printf("Adding to enlace: %i\n", i);
           (*arg).ret[i]++;
         }
       } else {
