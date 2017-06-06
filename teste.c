@@ -9,8 +9,9 @@ uint32_t iptoint(int a, int b, int c, int d) {
 
 void test1() {
   entrada rotas[4] = { iptoint(5,15,0,0), 16, 1,
-                       iptoint(5,3,13,0), 8,  2,
-                       iptoint(3,13,0,0), 24, 3 };
+                       iptoint(5,3,13,0), 8,  1,
+                       iptoint(127,0,0,0), 24, 2,
+                       iptoint(128,1,1,0), 10, 3};
   uint32_t pacotes[100];
   uint32_t *result;
 
@@ -21,7 +22,7 @@ void test1() {
   WHEN("Teste um. Três rotas distintas mas com todos os pacotes para o ip 0.0.0.0 (Broadcast)");
   IF("Envio um número igual de pacotes para cada rota");
 
-  result = roteamento(rotas, 3, pacotes, 100, 3);
+  result = roteamento(rotas, 4, pacotes, 100, 3);
   assert(result);
 
   THEN("Nenhum pacote deve ser descartado");
