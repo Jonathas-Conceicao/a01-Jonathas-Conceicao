@@ -31,6 +31,7 @@ void test1(){
 	for(int i=1; i<=4; i++){
 		isEqual(result[i], 1, 1);
 	}
+	free(result);
 
 }
 
@@ -53,6 +54,7 @@ void test2(){
 	for(int i=1; i<=2; i++){
 		isEqual(result[i], 1, 1);
 	}
+	free(result);
 
 }
 
@@ -74,6 +76,7 @@ void test3(){
 	for(int i=1; i<=2; i++){
 		isEqual(result[i], 1, 1);
 	}
+	free(result);
 
 }
 
@@ -115,6 +118,7 @@ void test4(){
 	for(int i=1; i<=4; i++){
 		isEqual(result[i], 256, 1);
 	}
+	free(result);
 
 }
 
